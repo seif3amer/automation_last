@@ -1,0 +1,27 @@
+pip install -r requirements.txt
+python api.py
+{
+  "ServiceName": "طلب فتوى",
+  "CollectedData": "{\"subject\":\"الصلاة\",\"question\":\"كيف تصلى صلاة الاستخارة\"}"
+}
+
+{
+  "ServiceName": "استعلام عن الرقم التأميني",
+  "CollectedData": "{}"
+}
+
+{
+  "ServiceName": "استعلام عن المعاش المنصرف للقائم بالصرف",
+  "CollectedData": "{}"
+}
+
+{
+  "ServiceName": "استعلام عن مخالفات رخص القيادة",
+  "CollectedData": "{\"license_number\":\"1234\",\"license_type\":\"خاصه\",\"governate\":\"البحر الاحمر\",\"issue_place\":\"وحدة مرور الغردقة\"}"
+}
+
+{
+  "ServiceName": "طلب فتوى",
+  "SubmittedAt": "الخميس، 4 يونيو 2026 في 02:51 ص"
+}
+
