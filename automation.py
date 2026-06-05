@@ -7,6 +7,8 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 from selenium.webdriver.common.action_chains import ActionChains
 from datetime import datetime, timedelta
+import unicodedata
+import re
 
 CREDENTIALS = {
     "seif":  {"mobile": "01128417941", "password": "Seif@2003"},
@@ -17,7 +19,7 @@ CREDENTIALS = {
 SERVICE_CREDENTIALS = {
     "طلب فتوى":                                "seif",
     "استعلام عن الرقم التأميني":               "sherif",
-    "استعلام عن المعاش المنصرف للقائم بالصرف": "nahed",
+    "الاستعلام عن المعاش المنصرف للقائم بالصرف": "nahed",
     "استعلام عن مخالفات رخص القيادة":          "seif",
 }
 
@@ -153,6 +155,56 @@ class Automation:
         self.browser.quit()
         return completion_time
 
+
+    def normalize_arabic(self, text):
+        """إزالة المدود الزايدة والتطبيع"""
+        # بنستبدل الألف بمد بألف عادية وبنشيل التكرار
+        text = re.sub(r'ا{2,}', 'ا', text)   # اااا → ا
+        text = re.sub(r'ـ+', '', text)         # بيشيل الحرف الـ tatweel ـ
+        return text.strip()
+
+    def select_from_dropdown(self, arrow_index, desired_text):
+        arrows = self.wait.until(
+            EC.presence_of_all_elements_located((By.XPATH, "//button[@aria-label='Open']"))
+        )
+        arrows[arrow_index].click()
+        time.sleep(0.5)
+
+        # بنستنى الـ listbox يظهر
+        listbox = self.wait.until(
+            EC.presence_of_element_located((By.XPATH, "//ul[@role='listbox']"))
+        )
+
+        # بنعمل scroll داخل الـ listbox ونجيب كل الـ options
+        last_count = 0
+        while True:
+            options = listbox.find_elements(By.TAG_NAME, "li")
+            
+            for option in options:
+                normalized_option = self.normalize_arabic(option.text)
+                normalized_desired = self.normalize_arabic(desired_text)
+                
+                if normalized_desired in normalized_option or normalized_option in normalized_desired:
+                    self.browser.execute_script("arguments[0].scrollIntoView(true);", option)
+                    time.sleep(0.3)
+                    self.browser.execute_script("arguments[0].click();", option)
+                    time.sleep(1)
+                    return
+            
+            # لو مش لقيناه نعمل scroll للأخر ونشوف في options جديدة
+            current_count = len(options)
+            if current_count == last_count:
+                # مفيش options جديدة، يعني خلصت الـ list
+                break
+            last_count = current_count
+            
+            # نعمل scroll للأخر عشان يحمل باقي الـ options
+            self.browser.execute_script(
+                "arguments[0].scrollTop = arguments[0].scrollHeight", listbox
+            )
+            time.sleep(0.5)
+
+        raise Exception(f"Option '{desired_text}' not found in dropdown")
     def Driving_License(self, license_number, license_type, governate, issue_place):
         license_number_input = self.wait.until(
             EC.presence_of_element_located((By.ID, "LicenseNumber"))
@@ -161,44 +213,41 @@ class Automation:
         license_number_input.send_keys(license_number)
         time.sleep(1)
 
-        arrows = self.wait.until(
-            EC.presence_of_all_elements_located((By.XPATH, "//button[@aria-label='Open']"))
-        )
-        arrows[0].click()
-        option = self.wait.until(
-            EC.element_to_be_clickable((By.XPATH, f"//ul[@role='listbox']//li[contains(text(), '{license_type}')]"))
-        )
-        self.browser.execute_script("arguments[0].click();", option)
-        time.sleep(1)
+        self.select_from_dropdown(0, license_type)
+        self.select_from_dropdown(1, governate)
+        self.select_from_dropdown(2, issue_place)
 
-        arrows = self.wait.until(
-            EC.presence_of_all_elements_located((By.XPATH, "//button[@aria-label='Open']"))
-        )
-        arrows[1].click()
-        option = self.wait.until(
-            EC.element_to_be_clickable((By.XPATH, f"//ul[@role='listbox']//li[contains(text(), '{governate}')]"))
-        )
-        self.browser.execute_script("arguments[0].click();", option)
-        time.sleep(1)
-
-        arrows = self.wait.until(
-            EC.presence_of_all_elements_located((By.XPATH, "//button[@aria-label='Open']"))
-        )
-        arrows[2].click()
-        option = self.wait.until(
-            EC.element_to_be_clickable((By.XPATH, f"//ul[@role='listbox']//li[contains(text(), '{issue_place}')]"))
-        )
-        self.browser.execute_script("arguments[0].click();", option)
-        time.sleep(1)
-
-        next_btm = self.wait.until(
+        next_btn = self.wait.until(
             EC.element_to_be_clickable((By.XPATH, "//button[contains(.,'التالي')]"))
         )
-        next_btm.click()
+        next_btn.click()
         time.sleep(5)
-        self.browser.quit()
-        return "رقم الرخصة خطاء"
 
+        # جيب الجدول
+        self.wait.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "table.MuiTable-root"))
+        )
+
+        rows = self.browser.find_elements(By.CSS_SELECTOR, "tr.MuiTableRow-root")
+        result = {}
+
+        for row in rows:
+            cells = row.find_elements(By.CSS_SELECTOR, "td.MuiTableCell-root")
+            if len(cells) >= 2:
+                label = cells[0].text.strip()
+                value = cells[1].text.strip()
+                result[label] = value
+
+        self.browser.quit()
+
+        if not result:
+            return "رقم الرخصة خطاء"
+
+        return (
+            f"رقم اللوحة: {result.get('رقم اللوحة', '-')} | "
+            f"عدد المخالفات: {result.get('عدد المخالفات', '-')} | "
+            f"إجمالى المخالفات والرسوم القضائية: {result.get('إجمالى المخالفات والرسوم القضائية', '-')}"
+        )
     def insurance_number(self):
         next_btn = self.wait.until(
             EC.element_to_be_clickable((By.XPATH, "//button[contains(.,'التالي')]"))

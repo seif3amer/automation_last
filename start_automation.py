@@ -3,10 +3,10 @@ from automation import Automation, CREDENTIALS, SERVICE_CREDENTIALS
 
 class StartAutomation(Automation):
 
-    def __init__(self):
-        super().__init__()
+    def _init_(self):
+        super()._init_()
 
-    def run(self, service_name, collected_data: dict):
+    def run(self, service_name, request_data: dict):
         # جيب الـ credentials الصح بناءً على الخدمة
         user_key = SERVICE_CREDENTIALS.get(service_name, "seif")
         creds = CREDENTIALS[user_key]
@@ -16,21 +16,21 @@ class StartAutomation(Automation):
         self.service_page()
 
         if service_name == "طلب فتوى":
-            subject = collected_data.get("subject")
-            question = collected_data.get("question")
+            subject = request_data.get("الموضوع")
+            question = request_data.get("نص سؤال الفتوي")
             return self.talb_fatw(subject, question)
 
         elif service_name == "استعلام عن الرقم التأميني":
             return self.insurance_number()
 
-        elif service_name == "استعلام عن المعاش المنصرف للقائم بالصرف":
+        elif service_name == "الاستعلام عن المعاش المنصرف للقائم بالصرف":
             return self.maash()
 
         elif service_name == "استعلام عن مخالفات رخص القيادة":
-            license_number = collected_data.get("license_number")
-            license_type = collected_data.get("license_type")
-            governate = collected_data.get("governate")
-            issue_place = collected_data.get("issue_place")
+            license_number = request_data.get("رقم الرخصة")
+            license_type = request_data.get("نوع الترخيص")
+            governate = request_data.get("المحافظة")
+            issue_place = request_data.get("وحدة الترخيص")
             return self.Driving_License(license_number, license_type, governate, issue_place)
 
         return None

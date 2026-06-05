@@ -1,10 +1,10 @@
 from start_automation import StartAutomation
 
 
-def execute_service(service_name: str, collected_data: dict) -> dict:
+def execute_service(service_name: str, request_data: dict) -> dict:
     try:
         bot = StartAutomation()
-        result = bot.run(service_name, collected_data)
+        result = bot.run(service_name, request_data)
 
         if service_name == "طلب فتوى":
             if result:
@@ -18,7 +18,7 @@ def execute_service(service_name: str, collected_data: dict) -> dict:
             else:
                 return {"success": False, "content": None, "submitted_at": ""}
 
-        elif service_name == "استعلام عن المعاش المنصرف للقائم بالصرف":
+        elif service_name == "الاستعلام عن المعاش المنصرف للقائم بالصرف":
             if result:
                 return {"success": True, "content": result, "submitted_at": ""}
             else:
@@ -29,8 +29,7 @@ def execute_service(service_name: str, collected_data: dict) -> dict:
                 return {"success": True, "content": result, "submitted_at": ""}
             else:
                 return {"success": False, "content": None, "submitted_at": ""}
-
-        return {"success": False, "content": None, "submitted_at": ""}
+                return {"success": False, "content": None, "submitted_at": ""}
 
     except Exception as e:
         return {"success": False, "content": f"حدث خطأ: {str(e)}", "submitted_at": ""}

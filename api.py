@@ -19,11 +19,10 @@ ns = api.namespace("api", description="Service Execution")
 
 # Execute Models
 request_model = api.model("ServiceExecutionRequest", {
-    "ServiceName": fields.String(required=True, description="اسم الخدمة", example="طلب فتوى"),
-    "CollectedData": fields.String(
+    "ServiceName": fields.String(required=True),
+    "RequestData": fields.Raw(
         required=False,
-        description="JSON string فيه البيانات",
-        example='{"subject":"موضوع","question":"السؤال هنا"}'
+        description="JSON string or null"
     )
 })
 
@@ -46,34 +45,34 @@ tracking_response_model = api.model("ServiceTrackingResponse", {
 results_store = {}
 
 
-def run_automation(task_id, service_name, collected_data):
-    result = execute_service(service_name, collected_data)
+def run_automation(task_id, service_name, request_data):
+    result = execute_service(service_name, request_data)
     results_store[task_id] = result
 
 
 @ns.route("/execute-service")
 class ExecuteService(Resource):
 
-    @ns.expect(request_model, validate=True)
+    @ns.expect(request_model, validate=False)
     @ns.marshal_with(response_model)
     def post(self):
         """تنفيذ خدمة حكومية"""
         body = api.payload
 
         service_name = body.get("ServiceName")
-        collected_data_raw = body.get("CollectedData")
+        request_data_raw = body.get("RequestData")
 
-        collected_data = {}
-        if collected_data_raw:
-            try:
-                collected_data = json.loads(collected_data_raw)
-            except json.JSONDecodeError:
-                return {"Success": False, "Content": "CollectedData مش JSON صح", "SubmittedAt": ""}, 400
+        if request_data_raw is None:
+            request_data = {}
+        elif isinstance(request_data_raw, dict):
+            request_data = request_data_raw
+        else:
+            request_data = json.loads(request_data_raw)
 
         task_id = str(uuid.uuid4())
-        thread = threading.Thread(target=run_automation, args=(task_id, service_name, collected_data))
+        thread = threading.Thread(target=run_automation, args=(task_id, service_name, request_data))
         thread.start()
-        thread.join(timeout=120)
+        thread.join(timeout=180)
 
         result = results_store.pop(task_id, None)
 
