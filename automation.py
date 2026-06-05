@@ -294,6 +294,7 @@ class Automation:
             if len(cells) >= 4:
                 owner_name = cells[1].text
                 net_income = cells[3].text
-                results.append(f"{owner_name} - {net_income}")
+                results.append(f"الاسم: {owner_name} - القيمة المالية: {net_income}")
+                #results.append(f"{owner_name} - {net_income}")
         self.browser.quit()
         return " | ".join(results) if results else None
